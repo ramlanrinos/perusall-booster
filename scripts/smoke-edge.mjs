@@ -91,6 +91,11 @@ try {
     await sleep(800);
     const stopped = await state();
     check("Stop ends the session", stopped.status === "idle", JSON.stringify(stopped));
+
+    await run(`location.href = chrome.runtime.getURL("pages/history.html")`);
+    await sleep(1500);
+    const hist = JSON.parse(await run(`JSON.stringify({rows: document.querySelectorAll('#rows tr').length, exportEnabled: !document.getElementById('export').disabled, count: document.getElementById('sum-count').textContent})`));
+    check("History lists the saved session", hist.rows === 1 && hist.exportEnabled && hist.count === "1", JSON.stringify(hist));
     const sw = await cdp(worker.webSocketDebuggerUrl, "Runtime.evaluate", {
       expression: "JSON.stringify(chrome.runtime.getManifest().permissions)", returnByValue: true,
     });

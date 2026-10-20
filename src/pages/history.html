@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Session history · Perusall Booster</title>
+  <link rel="icon" href="../icons/icon-32.png">
+  <link rel="stylesheet" href="../styles/base.css">
+  <link rel="stylesheet" href="pages.css">
+</head>
+<body>
+  <header class="page-header">
+    <img src="../icons/icon-48.png" width="40" height="40" alt="">
+    <h1>Session history</h1>
+    <span class="spacer"></span>
+    <div class="actions">
+      <button id="export" class="btn btn-primary" type="button">Export CSV</button>
+      <button id="clear" class="btn btn-danger" type="button">Clear all history</button>
+    </div>
+  </header>
+
+  <p class="notice">These are <strong>your personal timer sessions</strong>, stored only in this browser. They are
+    separate from Perusall's official records and are not sent anywhere.</p>
+
+  <div id="error" class="banner" role="alert" hidden></div>
+  <p id="dropped" class="notice" hidden></p>
+
+  <section class="summary" aria-label="Totals">
+    <div class="card"><span class="muted small">Sessions</span><strong id="sum-count">0</strong></div>
+    <div class="card"><span class="muted small">Timer elapsed</span><strong id="sum-elapsed">0m</strong></div>
+    <div class="card"><span class="muted small">Perusall in foreground</span><strong id="sum-foreground">0m</strong></div>
+    <div class="card"><span class="muted small">Last 7 days</span><strong id="sum-week">0m</strong></div>
+  </section>
+
+  <div class="table-wrap">
+    <table>
+      <caption class="visually-hidden">Saved personal reading sessions, newest first</caption>
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Time</th>
+          <th scope="col">Timer elapsed</th>
+          <th scope="col">Perusall foreground</th>
+          <th scope="col">Paused</th>
+          <th scope="col">Not determined</th>
+          <th scope="col">Status</th>
+          <th scope="col">Note</th>
+          <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p id="empty" class="empty muted" hidden>No saved sessions yet. Start a session from the toolbar popup and press
+      <em>Stop &amp; save</em>.</p>
+  </div>
+
+  <dialog id="confirm" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title">Confirm</h2>
+      <p id="confirm-text"></p>
+      <div class="actions">
+        <button class="btn" value="cancel" type="submit" autofocus>Cancel</button>
+        <button class="btn btn-danger" value="confirm" type="submit" id="confirm-ok">Delete</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="history.js"></script>
+</body>
+</html>

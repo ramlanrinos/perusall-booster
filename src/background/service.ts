@@ -1,6 +1,7 @@
 // Background logic, independent of the global `chrome` object so it can be tested with mocks.
 // The service worker (index.ts) wires real chrome.* APIs into this class.
-import type { PerusallPresence, PopupView, Request, Response } from "../shared/messages";
+import type { HistoryRequest, HistoryResponse, PerusallPresence, PopupView, Request, Response } from "../shared/messages";
+import { recordFromFinished } from "../shared/model";
 import { dailyGoalMs, targetSessionMs, type Settings } from "../shared/settings";
 import { overlapMs, startOfLocalDay, startOfNextLocalDay } from "../shared/time";
 import * as timer from "../shared/timer";
@@ -71,12 +72,26 @@ export class BackgroundService {
     return { state: after, settings };
   }
 
-  /** Hook for finished sessions (persisted to history in a later stage). */
-  protected async onSessionFinished(_finished: timer.FinishedSession): Promise<void> {}
+  /**
+   * Saves a finished session to history. Called *before* the idle timer is persisted: if saving
+   * fails, the whole stop fails and the session stays active, so nothing is lost.
+   */
+  private async onSessionFinished(finished: timer.FinishedSession): Promise<void> {
+    await this.deps.store.addSession(recordFromFinished(finished));
+  }
 
-  /** Today's personal reading total (running time only). */
-  protected async todayMs(state: TimerState, now: number): Promise<number> {
-    return overlapMs(timer.segmentsAt(state, now), startOfLocalDay(now), startOfNextLocalDay(now));
+  /** Today's personal reading total: running time of saved sessions plus the current one. */
+  private async todayMs(state: TimerState, now: number): Promise<number> {
+    const from = startOfLocalDay(now);
+    const to = startOfNextLocalDay(now);
+    let total = overlapMs(timer.segmentsAt(state, now), from, to);
+    try {
+      const { sessions } = await this.deps.store.loadSessions();
+      for (const s of sessions) if (s.endedAt >= from && s.startedAt < to) total += overlapMs(s.segments, from, to);
+    } catch (e) {
+      this.storageError = e instanceof Error ? e.message : String(e);
+    }
+    return total;
   }
 
   private async view(state: TimerState, settings: Settings, now: number): Promise<PopupView> {
@@ -126,6 +141,19 @@ export class BackgroundService {
         const error = e instanceof Error ? e.message : String(e);
         if (e instanceof StorageError) this.storageError = error;
         return { ok: false, error };
+      }
+    });
+  }
+
+  handleHistory(request: HistoryRequest): Promise<HistoryResponse> {
+    return this.serialize(async () => {
+      try {
+        const store = this.deps.store;
+        if (request.type === "deleteSession") await store.deleteSession(request.id);
+        if (request.type === "clearSessions") await store.clearSessions();
+        return { ok: true, history: await store.loadSessions() };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) };
       }
     });
   }

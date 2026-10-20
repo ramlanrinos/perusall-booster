@@ -1,5 +1,5 @@
 // Thin, validated persistence layer over a chrome.storage-like area.
-import { parseTimerState } from "../shared/model";
+import { MAX_SESSIONS, parseSessionList, parseTimerState, type SessionRecord } from "../shared/model";
 import { sanitizeSettings, type Settings } from "../shared/settings";
 import { initialTimerState, type TimerState } from "../shared/timer";
 
@@ -14,6 +14,7 @@ export const KEYS = {
   timer: "timer",
   timerBackup: "timer_corrupt_backup",
   settings: "settings",
+  sessions: "sessions",
   schemaVersion: "schemaVersion",
 } as const;
 
@@ -75,5 +76,41 @@ export class Store {
       throw new StorageError(`Could not save settings: ${describe(e)}`, e);
     }
     return clean;
+  }
+
+  /** Loads history (newest first). Invalid records are skipped and counted, never shown. */
+  async loadSessions(): Promise<{ sessions: SessionRecord[]; dropped: number }> {
+    try {
+      return parseSessionList((await this.area.get(KEYS.sessions))[KEYS.sessions]);
+    } catch (e) {
+      throw new StorageError(`Could not read session history: ${describe(e)}`, e);
+    }
+  }
+
+  private async writeSessions(sessions: SessionRecord[], what: string): Promise<void> {
+    try {
+      await this.area.set({ [KEYS.sessions]: sessions.slice(0, MAX_SESSIONS) });
+    } catch (e) {
+      throw new StorageError(`Could not ${what}: ${describe(e)}`, e);
+    }
+  }
+
+  /** Adds a finished session (idempotent per id); keeps the newest MAX_SESSIONS. */
+  async addSession(record: SessionRecord): Promise<void> {
+    const { sessions } = await this.loadSessions();
+    const others = sessions.filter((s) => s.id !== record.id);
+    await this.writeSessions([record, ...others].sort((a, b) => b.startedAt - a.startedAt), "save the session to history");
+  }
+
+  async deleteSession(id: string): Promise<boolean> {
+    const { sessions } = await this.loadSessions();
+    const kept = sessions.filter((s) => s.id !== id);
+    if (kept.length === sessions.length) return false;
+    await this.writeSessions(kept, "delete the session");
+    return true;
+  }
+
+  async clearSessions(): Promise<void> {
+    await this.writeSessions([], "clear the history");
   }
 }

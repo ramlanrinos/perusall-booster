@@ -74,3 +74,92 @@ export function parseTimerState(v: unknown): TimerState | null {
     reminders: { lastBreakAtElapsedMs: rem.lastBreakAtElapsedMs, sessionGoalNotified: rem.sessionGoalNotified },
   };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Session history records
+
+export type SessionStatus = "completed" | "ended-early";
+
+export interface SessionRecord {
+  id: string;
+  startedAt: number;
+  endedAt: number;
+  elapsedMs: number;
+  pausedMs: number;
+  undeterminedMs: number;
+  focusedMs: number;
+  foregroundMs: number;
+  interruptions: number;
+  /** Running segments, used only to split daily totals across midnight. */
+  segments: Segment[];
+  note: string;
+  status: SessionStatus;
+}
+
+export const MAX_SESSIONS = 1000;
+
+/** Returns a valid record or null. Only known fields are kept (nothing unexpected is stored). */
+export function parseSessionRecord(v: unknown): SessionRecord | null {
+  if (!isObj(v)) return null;
+  if (typeof v.id !== "string" || v.id.length === 0 || v.id.length > 100) return null;
+  const nums = ["startedAt", "endedAt", "elapsedMs", "pausedMs", "undeterminedMs", "focusedMs", "foregroundMs", "interruptions"] as const;
+  if (!nums.every((k) => isNonNeg(v[k]))) return null;
+  if ((v.endedAt as number) < (v.startedAt as number)) return null;
+  if ((v.focusedMs as number) > (v.elapsedMs as number) || (v.foregroundMs as number) > (v.focusedMs as number)) return null;
+  if (v.status !== "completed" && v.status !== "ended-early") return null;
+  if (typeof v.note !== "string") return null;
+  const segments = validSegments(v.segments);
+  if (!segments) return null;
+  return {
+    id: v.id,
+    startedAt: v.startedAt as number,
+    endedAt: v.endedAt as number,
+    elapsedMs: v.elapsedMs as number,
+    pausedMs: v.pausedMs as number,
+    undeterminedMs: v.undeterminedMs as number,
+    focusedMs: v.focusedMs as number,
+    foregroundMs: v.foregroundMs as number,
+    interruptions: v.interruptions as number,
+    segments,
+    note: v.note.slice(0, MAX_NOTE_LENGTH),
+    status: v.status,
+  };
+}
+
+/** Validates a stored list: invalid entries are dropped and counted. Newest first. */
+export function parseSessionList(v: unknown): { sessions: SessionRecord[]; dropped: number } {
+  if (v === undefined) return { sessions: [], dropped: 0 };
+  if (!Array.isArray(v)) return { sessions: [], dropped: 1 };
+  const sessions: SessionRecord[] = [];
+  const seen = new Set<string>();
+  let dropped = 0;
+  for (const item of v) {
+    const rec = parseSessionRecord(item);
+    if (!rec || seen.has(rec.id)) { dropped++; continue; }
+    seen.add(rec.id);
+    sessions.push(rec);
+  }
+  sessions.sort((a, b) => b.startedAt - a.startedAt);
+  return { sessions, dropped };
+}
+
+export function recordFromFinished(f: {
+  id: string; startedAt: number; endedAt: number; interruptions: number; note: string; status: SessionStatus;
+  segments: Segment[];
+  buckets: { elapsedMs: number; pausedMs: number; undeterminedMs: number; focusedMs: number; foregroundMs: number };
+}): SessionRecord {
+  return {
+    id: f.id,
+    startedAt: f.startedAt,
+    endedAt: f.endedAt,
+    elapsedMs: f.buckets.elapsedMs,
+    pausedMs: f.buckets.pausedMs,
+    undeterminedMs: f.buckets.undeterminedMs,
+    focusedMs: f.buckets.focusedMs,
+    foregroundMs: f.buckets.foregroundMs,
+    interruptions: f.interruptions,
+    segments: f.segments,
+    note: f.note,
+    status: f.status,
+  };
+}
