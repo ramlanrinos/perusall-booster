@@ -141,10 +141,10 @@ function autoPause(s: TimerState, at: number, reason: AutoPauseReason): void {
 
 /**
  * Brings the buckets up to `now` using the context that applied since the last observation.
- * Detects gaps longer than SUSPEND_GAP_MS (sleep / browser closed): the gap is recorded as
- * undetermined and a running timer is paused at the last known-alive instant.
+ * Detects gaps longer than SUSPEND_GAP_MS (sleep / browser closed), or any gap when `knownGap` is
+ * set: the gap is recorded as undetermined and a running timer is paused at the last alive instant.
  */
-export function observe(state: TimerState, now: number): TimerState {
+export function observe(state: TimerState, now: number, opts: { knownGap?: boolean } = {}): TimerState {
   const s = clone(state);
   if (s.status === "idle" || s.lastObservedAt === null) {
     s.lastHeartbeatAt = now;
@@ -160,7 +160,9 @@ export function observe(state: TimerState, now: number): TimerState {
   }
 
   const lastAlive = Math.max(s.lastHeartbeatAt ?? s.lastObservedAt, s.lastObservedAt);
-  if (now - lastAlive > SUSPEND_GAP_MS) {
+  // knownGap: the caller knows the browser was not running since the last heartbeat (browser
+  // restart), so even a short gap is "not determined" rather than reading time.
+  if (now - lastAlive > SUSPEND_GAP_MS || (opts.knownGap && now > lastAlive)) {
     // Accrue normally up to the last instant we know the browser was alive, then pause there.
     advance(s, lastAlive);
     autoPause(s, lastAlive, "sleep-or-closed");

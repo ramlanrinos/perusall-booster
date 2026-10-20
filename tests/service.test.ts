@@ -104,4 +104,29 @@ describe("background service", () => {
     expect(view(await service.handle({ type: "getState" })).status).toBe("idle");
     expect((area.data[KEYS.timer] as { note: string }).note).toBe("");
   });
+
+  it("a short browser restart is never counted as reading time", async () => {
+    const area = new MemoryArea();
+    const clock = new FakeClock();
+    await setup(area, clock).service.handle({ type: "start" });
+    clock.advance(20 * SEC);
+    await setup(area, clock).service.tick();
+    clock.advance(40 * SEC); // closed and reopened within the 90 s sleep threshold
+    const { service } = setup(area, clock);
+    await service.startup(true);
+    const v = view(await service.handle({ type: "getState" }));
+    expect(v.status).toBe("paused");
+    expect(v.buckets.elapsedMs).toBe(20 * SEC);
+    expect(v.buckets.undeterminedMs).toBe(40 * SEC);
+  });
+
+  it("an extension reload while the browser keeps running continues the session", async () => {
+    const area = new MemoryArea();
+    const clock = new FakeClock();
+    await setup(area, clock).service.handle({ type: "start" });
+    clock.advance(20 * SEC);
+    const { service } = setup(area, clock);
+    await service.startup(false);
+    expect(view(await service.handle({ type: "getState" })).status).toBe("running");
+  });
 });

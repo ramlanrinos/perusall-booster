@@ -43,8 +43,29 @@ for (const file of files) {
   }
 }
 
+// --history: also scan every line ever added in any commit (deleting a secret later does not
+// remove it from Git history).
+if (process.argv.includes("--history")) {
+  let log;
+  try {
+    log = execFileSync("git", ["log", "--all", "-p", "--no-color", "--format=commit %H", "--", ".", `:(exclude)${SELF}`], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  } catch {
+    log = ""; // no commits yet
+  }
+  let commit = "", file = "";
+  for (const line of log.split("\n")) {
+    if (line.startsWith("commit ")) { commit = line.slice(7, 14); continue; }
+    if (line.startsWith("+++ b/")) { file = line.slice(6); continue; }
+    if (!line.startsWith("+") || line.startsWith("+++")) continue;
+    for (const [name, re] of RULES) {
+      if (file === ".gitignore" && name === "Private analysis artefact") continue;
+      if (re.test(line.slice(1))) findings.push(`history ${commit} ${file}  ${name}`);
+    }
+  }
+}
+
 if (findings.length) {
   console.error("Sensitive-data check FAILED:\n - " + findings.join("\n - "));
   process.exit(1);
 }
-console.warn(`Sensitive-data check OK (${files.length} files scanned)`);
+console.warn(`Sensitive-data check OK (${files.length} files scanned${process.argv.includes("--history") ? " + full Git history" : ""})`);

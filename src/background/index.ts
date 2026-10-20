@@ -46,10 +46,28 @@ const apis: ActivityApis = {
   },
 };
 
+// The first observation of every browser session must know that the browser was not running
+// since the last heartbeat. chrome.storage.session is cleared whenever the browser (or the
+// extension) restarts, so a missing marker identifies that first observation reliably, whatever
+// order the startup events arrive in. Every handler waits for this before touching the timer.
+const SESSION_MARKER = "pbBrowserSessionSeen";
+const ready: Promise<void> = (async () => {
+  try {
+    const seen = (await chrome.storage.session.get(SESSION_MARKER))[SESSION_MARKER] === true;
+    if (!seen) {
+      await service.startup(true);
+      await chrome.storage.session.set({ [SESSION_MARKER]: true });
+    }
+  } catch {
+    // If session storage is unavailable, fall back to normal gap detection (90 s threshold).
+  }
+})();
+
 // Re-read the activity context after any relevant browser event. Reads are async, so only the
 // most recent read is applied (an older, slower read must not overwrite a newer one).
 let readSeq = 0;
 async function refreshActivity(): Promise<void> {
+  await ready;
   const seq = ++readSeq;
   const snapshot = await readActivity(apis);
   if (seq !== readSeq) return;
@@ -64,15 +82,15 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse: (r
     return false;
   }
   if (isRequest(message)) {
-    void service.handle(message).then(sendResponse);
+    void ready.then(() => service.handle(message)).then(sendResponse);
     return true; // async response
   }
   if (isHistoryRequest(message)) {
-    void service.handleHistory(message).then(sendResponse);
+    void ready.then(() => service.handleHistory(message)).then(sendResponse);
     return true;
   }
   if (isSettingsRequest(message)) {
-    void service.handleSettings(message).then(sendResponse);
+    void ready.then(() => service.handleSettings(message)).then(sendResponse);
     return true;
   }
   sendResponse({ ok: false, error: "Unsupported message" });
@@ -97,9 +115,10 @@ chrome.permissions.onRemoved.addListener(refresh);
 // Clicking a reminder simply dismisses it.
 chrome.notifications.onClicked.addListener((id) => void chrome.notifications.clear(id));
 
-// After a browser restart, observe immediately so the closed period is classified as "not determined".
-chrome.runtime.onStartup.addListener(() => void service.startup().then(refreshActivity));
-chrome.runtime.onInstalled.addListener(() => void service.startup().then(refreshActivity));
+// onStartup has no work of its own (see `ready`), but registering it guarantees the worker is
+// started together with the browser, so a running session is re-evaluated immediately.
+chrome.runtime.onStartup.addListener(refresh);
+chrome.runtime.onInstalled.addListener(refresh);
 
 // The worker can be started for any event; make sure the context is current.
 refresh();

@@ -19,10 +19,15 @@ export function unpackedExtensionId(dir) {
     .map((c) => String.fromCharCode(97 + parseInt(c, 16))).join("");
 }
 
-export async function launch({ browser, extraArgs = [] }) {
+/** Creates a throw-away browser profile directory (the caller deletes it with removeProfile). */
+export const makeProfile = () => mkdtempSync(join(tmpdir(), "pb-browser-"));
+export const removeProfile = (dir) => rmSync(dir, { recursive: true, force: true });
+
+export async function launch({ browser, extraArgs = [], profileDir }) {
   const dist = resolve("dist");
   if (!existsSync(join(dist, "manifest.json"))) throw new Error("dist/ missing: run npm run build");
-  const profile = mkdtempSync(join(tmpdir(), "pb-browser-"));
+  const keepProfile = !!profileDir;
+  const profile = profileDir ?? makeProfile();
   const port = 9300 + Math.floor(Math.random() * 500);
   const proc = spawn(browser, [
     `--user-data-dir=${profile}`, `--remote-debugging-port=${port}`, "--remote-debugging-address=127.0.0.1",
@@ -36,9 +41,19 @@ export async function launch({ browser, extraArgs = [] }) {
     async targets() { return (await fetch(`${base}/json/list`)).json(); },
     async version() { return (await fetch(`${base}/json/version`)).json(); },
     async close() {
-      proc.kill("SIGTERM");
-      await sleep(800);
-      rmSync(profile, { recursive: true, force: true });
+      // Graceful shutdown over CDP (like a user quitting), so a reused profile is saved cleanly.
+      const exited = new Promise((r) => (proc.exitCode !== null ? r() : proc.once("exit", r)));
+      try {
+        const { webSocketDebuggerUrl } = await (await fetch(`${base}/json/version`)).json();
+        await cdp(webSocketDebuggerUrl, "Browser.close");
+      } catch { /* fall back to a signal below */ }
+      const timeout = sleep(8000).then(() => "timeout");
+      if ((await Promise.race([exited, timeout])) === "timeout") {
+        proc.kill("SIGTERM");
+        await exited;
+      }
+      await sleep(300);
+      if (!keepProfile) removeProfile(profile);
     },
   };
   return ctx;

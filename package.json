@@ -14,7 +14,8 @@
     "check:secrets": "node scripts/check-secrets.mjs",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build && npm run validate:manifest && npm run check:secrets",
     "smoke": "node scripts/smoke-edge.mjs",
-    "test:browser": "node scripts/smoke-edge.mjs && node scripts/mock-perusall-test.mjs"
+    "test:browser": "node scripts/smoke-edge.mjs && node scripts/mock-perusall-test.mjs && node scripts/compat-test.mjs",
+    "check:history": "node scripts/check-secrets.mjs --history"
   },
   "engines": {
     "node": ">=20"

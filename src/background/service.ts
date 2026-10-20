@@ -203,10 +203,14 @@ export class BackgroundService {
     });
   }
 
-  /** Browser startup / install: observe, and make sure the heartbeat alarm matches the timer status. */
-  startup(): Promise<TimerState> {
+  /**
+   * Browser startup (`browserRestarted`) or extension install/update: observe, and make sure the
+   * heartbeat alarm matches the timer status. After a browser restart the time since the last
+   * heartbeat is never counted as reading time, however short it was.
+   */
+  startup(browserRestarted = false): Promise<TimerState> {
     return this.serialize(async () => {
-      const { state } = await this.mutate((s, now) => timer.observe(s, now));
+      const { state } = await this.mutate((s, now) => timer.observe(s, now, { knownGap: browserRestarted }));
       await this.syncHeartbeat(state);
       return state;
     });
