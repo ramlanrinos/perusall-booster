@@ -25,6 +25,10 @@
   },
   "permissions": [
     "storage",
-    "alarms"
+    "alarms",
+    "idle"
+  ],
+  "host_permissions": [
+    "https://app.perusall.com/*"
   ]
 }

@@ -70,7 +70,7 @@ const PERUSALL_TEXT = {
   foreground: "Perusall: in foreground",
   open: "Perusall: open in background",
   none: "Perusall: not open",
-  unknown: "Perusall: unknown",
+  unknown: "Perusall: not detectable",
 } as const;
 
 function render(): void {
