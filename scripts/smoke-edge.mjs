@@ -66,6 +66,31 @@ try {
     const info = JSON.parse(evalRes.result?.result?.value ?? "{}");
     check("popup rendered", info.title === "Perusall Booster" && !!info.timer, JSON.stringify(info));
     check("official-records disclaimer present", info.disclaimer === true);
+
+    // Drive the real popup UI against the real service worker and chrome.storage.
+    const run = async (expression) => {
+      const r = await cdp(page.webSocketDebuggerUrl, "Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true });
+      return r.result?.result?.value;
+    };
+    const state = () => run(`JSON.stringify({status: document.getElementById('status').dataset.status, timer: document.getElementById('timer').textContent})`).then(JSON.parse);
+    await run("document.getElementById('btn-start').click()");
+    await sleep(2600);
+    const running = await state();
+    check("Start runs the timer", running.status === "running" && running.timer !== "0:00:00", JSON.stringify(running));
+    await run("document.getElementById('btn-pause').click()");
+    await sleep(800);
+    const paused = await state();
+    await sleep(1500);
+    const pausedLater = await state();
+    check("Pause freezes the timer", paused.status === "paused" && paused.timer === pausedLater.timer, `${JSON.stringify(paused)} -> ${JSON.stringify(pausedLater)}`);
+    await run("location.reload()");
+    await sleep(1500);
+    const reopened = await state();
+    check("Reopening the popup keeps the session", reopened.status === "paused" && reopened.timer === paused.timer, JSON.stringify(reopened));
+    await run("document.getElementById('btn-stop').click()");
+    await sleep(800);
+    const stopped = await state();
+    check("Stop ends the session", stopped.status === "idle", JSON.stringify(stopped));
     const sw = await cdp(worker.webSocketDebuggerUrl, "Runtime.evaluate", {
       expression: "JSON.stringify(chrome.runtime.getManifest().permissions)", returnByValue: true,
     });

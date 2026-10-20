@@ -23,5 +23,8 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": []
+  "permissions": [
+    "storage",
+    "alarms"
+  ]
 }
