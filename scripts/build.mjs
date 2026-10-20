@@ -21,8 +21,10 @@ const statics = [
   ["manifest.json", "manifest.json"],
   ["icons", "icons"],
   ["src/popup/popup.html", "popup/popup.html"],
+  ["src/popup/popup.css", "popup/popup.css"],
   ["src/pages/history.html", "pages/history.html"],
   ["src/pages/options.html", "pages/options.html"],
+  ["src/pages/pages.css", "pages/pages.css"],
   ["src/styles", "styles"],
 ];
 

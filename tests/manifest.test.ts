@@ -21,3 +21,20 @@ describe("manifest", () => {
     }
   });
 });
+
+describe("manifest assets", () => {
+  it("references icons that exist and are PNG files", () => {
+    const icons = { ...manifest.icons, ...manifest.action?.default_icon } as Record<string, string>;
+    expect(Object.keys(icons).length).toBeGreaterThan(0);
+    for (const path of Object.values(icons)) {
+      const bytes = readFileSync(new URL(`../${path}`, import.meta.url));
+      expect(bytes.subarray(1, 4).toString("ascii")).toBe("PNG");
+    }
+  });
+
+  it("has a popup page that states the timer is separate from Perusall's records", () => {
+    const html = readFileSync(new URL("../src/popup/popup.html", import.meta.url), "utf8");
+    expect(manifest.action.default_popup).toBe("popup/popup.html");
+    expect(html).toContain("separate from Perusall's official");
+  });
+});

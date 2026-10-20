@@ -12,7 +12,8 @@
     "test": "vitest run",
     "validate:manifest": "node scripts/validate-manifest.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run build && npm run validate:manifest && npm run check:secrets"
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build && npm run validate:manifest && npm run check:secrets",
+    "smoke": "node scripts/smoke-edge.mjs"
   },
   "engines": {
     "node": ">=20"
