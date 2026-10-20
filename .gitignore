@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output and packaged extension (built locally, not committed)
+dist/
+release/
+*.zip
+*.crx
+*.pem
+
+# Test / coverage output
+coverage/
+test-results/
+.vitest/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.p12
+
+# Browser profiles, captures and private analysis data
+*.har
+*.saz
+evidence/
+**/browser-profile*/
+.perusall-analysis-profile/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+npm-debug.log*
+tmp/
+.tmp/

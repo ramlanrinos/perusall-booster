@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Perusall Booster",
+  "short_name": "Perusall Booster",
+  "version": "0.1.0",
+  "description": "Personal reading timer, goals and session history for Perusall readers. Separate from Perusall's official records.",
+  "minimum_chrome_version": "116",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": []
+}
