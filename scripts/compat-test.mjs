@@ -5,7 +5,7 @@
 // Uses only extension pages; no website is opened.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { cdp, evaluate, findBrowser, launch, makeProfile, removeProfile, reporter, sleep, waitFor } from "./lib/browser.mjs";
+import { evaluate, findBrowser, launchWithExtension, makeProfile, openExtensionPage, removeProfile, reporter, sleep, waitFor } from "./lib/browser.mjs";
 
 const browserPath = findBrowser(process.argv[2]);
 if (!browserPath) { console.error("SKIPPED: no Chromium-based browser found"); process.exit(2); }
@@ -23,31 +23,11 @@ writeFileSync(join(profile, "Default", "Preferences"), JSON.stringify({
   extensions: { ui: { developer_mode: true } },
 }));
 
-// Opening an extension page (and messaging from it) wakes the MV3 service worker on demand, so the
-// worker target is not required to exist beforehand.
-async function openPage(b, path) {
-  await waitFor(async () => (await b.version()).webSocketDebuggerUrl);
-  const created = await cdp((await b.version()).webSocketDebuggerUrl, "Target.createTarget", { url: `chrome-extension://${b.extensionId}/${path}` });
-  const page = await waitFor(async () => (await b.targets()).find((t) => t.id === created.result?.targetId));
-  if (!page) throw new Error(`could not open ${path}`);
-  // Right after launch the unpacked extension may not be registered yet; reload until it is.
-  for (let i = 0; i < 20; i++) {
-    await sleep(600);
-    if (await evaluate(page.webSocketDebuggerUrl, "typeof chrome !== 'undefined' && typeof chrome.runtime?.sendMessage === 'function'").catch(() => false)) {
-      await sleep(600);
-      return page;
-    }
-    await cdp(page.webSocketDebuggerUrl, "Page.reload", {});
-  }
-  throw new Error(`extension did not load for ${path} (step: ${globalThis.__step})`);
-}
 const send = (page, msg) => evaluate(page.webSocketDebuggerUrl, `chrome.runtime.sendMessage(${JSON.stringify(msg)}).then(r => JSON.stringify(r))`).then(JSON.parse);
 
 try {
-  globalThis.__step = "first launch";
   // 1) Start a session, then quit the browser.
-  let b = await launch({ browser: browserPath, profileDir: profile });
-  let page = await openPage(b, "popup/popup.html");
+  let { b, page } = await launchWithExtension({ browser: browserPath, profileDir: profile });
   await send(page, { type: "start" });
   await sleep(3000);
   const before = (await send(page, { type: "getState" })).view;
@@ -55,21 +35,8 @@ try {
   const closedAt = Date.now();
   await sleep(6000);
 
-  globalThis.__step = "relaunch";
   // 2) Restart with the same profile.
-  // Edge occasionally does not re-register a command-line (--load-extension) extension when a
-  // profile is reopened; that is a harness limitation, so the relaunch is retried once.
-  for (let attempt = 1; ; attempt++) {
-    b = await launch({ browser: browserPath, profileDir: profile });
-    try {
-      page = await openPage(b, "popup/popup.html");
-      break;
-    } catch (e) {
-      await b.close();
-      if (attempt >= 2) throw e;
-      console.warn("note: relaunch retried (extension not re-registered by the browser)");
-    }
-  }
+  ({ b, page } = await launchWithExtension({ browser: browserPath, profileDir: profile }));
   await sleep(1000);
   const after = (await send(page, { type: "getState" })).view;
   const closedFor = Date.now() - closedAt;
@@ -81,8 +48,7 @@ try {
 
   // 3) Save it and export CSV through the real UI.
   await send(page, { type: "stop", note: "=compat test, note" });
-  globalThis.__step = "history page";
-  const hist = await openPage(b, "pages/history.html");
+  const hist = await openExtensionPage(b, "pages/history.html");
   await evaluate(hist.webSocketDebuggerUrl, "document.getElementById('export').click()");
   const file = await waitFor(async () => { try { return readdirSync(downloads).find((f) => f.endsWith(".csv")); } catch { return undefined; } }, { tries: 30, delay: 300 });
   check("CSV export downloads a file", file, file ?? "no .csv in download folder");

@@ -20,7 +20,7 @@ npm run test:browser     # real-browser tests (needs Microsoft Edge, Google Chro
 | `scripts/mock-perusall-test.mjs` | **Local mock of `app.perusall.com`**: the browser's host resolver maps it to a local HTTPS server with a throw-away certificate, so the real Perusall is never contacted. Checks detection, foreground time, tab switch and close, isolation from an unrelated site, and that the extension sends no network requests |
 | `scripts/compat-test.mjs` | Browser quit and restart with the same profile; real CSV download; clear-all history |
 
-## Stage 7 results (Microsoft Edge 153.0.4234.32, Linux, headless)
+## Stage 7 results (Microsoft Edge 153.0.4234.32, Linux, headless; extension v1.0.0)
 
 | # | Scenario | How it was tested | Result |
 |---|---|---|---|
@@ -56,6 +56,8 @@ Additional checks: WCAG AA contrast for all text colour pairs in light and dark 
 
 ### Known test-harness limitation
 
-Edge occasionally doesn't re-register a command-line (`--load-extension`) extension when a test profile is reopened.
-`compat-test.mjs` retries the relaunch once and prints a note when it does. This affects only the test harness, not
-installed extensions.
+Edge sometimes starts without registering a command-line (`--load-extension`) extension (seen in about 1 in 5
+launches). Every browser test therefore confirms that an extension page has loaded and, if it hasn't, relaunches the
+browser (up to 3 attempts), printing `note: browser relaunched …`. This affects only the test harness. Extensions
+installed through *Load unpacked* are registered permanently. The release ZIP was also extracted and smoke-tested
+(`EXTENSION_DIR=<folder> node scripts/smoke-edge.mjs`).

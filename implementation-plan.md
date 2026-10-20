@@ -80,6 +80,9 @@ scripts/         build, manifest validation, secret scan, icon generation, packa
   * **Sleep, suspend, browser closed**: a 30-second heartbeat alarm records `lastHeartbeat`. If the next event
     arrives more than **90 s** after the last heartbeat, the gap is treated as *not determined*. The session is
     auto-paused at the last heartbeat and the gap goes to the not-determined bucket, never to elapsed time.
+  * **Browser restart**: the first observation of each browser session is identified by a marker in
+    `chrome.storage.session`, which the browser clears on quit. That gap is always *not determined*, even when it is
+    shorter than 90 s. All event handlers wait for this check, so startup event order can't matter.
   * **Screen locked** (`chrome.idle` = `locked`): counted as *not determined* while it lasts. The timer keeps its
     run/pause state; the user decides.
 * **Indicator accrual.** On every context change (tab activated, URL changed, window focus changed, idle
@@ -91,6 +94,7 @@ scripts/         build, manifest validation, secret scan, icon generation, packa
 | Key | Content | Limits |
 |---|---|---|
 | `timer` | `TimerState`: status (`idle`/`running`/`paused`), session id, timestamps, bucket totals, last context, last heartbeat, reminder bookkeeping | one object |
+| `dailyGoalNotifiedOn` | local date the daily-goal reminder was last shown | one string |
 | `sessions` | `SessionRecord[]`: id, startedAt, endedAt, elapsedMs, foregroundMs, focusedMs, pausedMs, undeterminedMs, segments (for daily totals across midnight), note (≤ 500 chars), status (`completed` / `ended-early` / `interrupted`) | newest 1000 kept |
 | `settings` | `Settings`: goals, reminder interval, notification switches | one object |
 | `schemaVersion` | number | — |
@@ -108,7 +112,8 @@ scripts/         build, manifest validation, secret scan, icon generation, packa
 | Integration | background message handlers + storage + alarms with an in-memory `chrome` mock; popup reopen; restart recovery; storage failure | Vitest |
 | Static | `tsc --noEmit`, ESLint, manifest validator (MV3, permission allowlist, referenced files exist) | npm scripts |
 | Security | secret / PII scanner over tracked and staged files | `scripts/check-secrets.mjs` |
-| Browser smoke | load the built extension in an isolated Microsoft Edge profile and confirm the service worker and popup load, without touching Perusall | `scripts/smoke-edge.mjs` (if the browser allows `--load-extension`) |
+| Browser | real Microsoft Edge with a throw-away profile: popup and pages end to end, browser restart, CSV download | `scripts/smoke-edge.mjs`, `scripts/compat-test.mjs` |
+| Mock site | a local HTTPS mock of `app.perusall.com` (host-resolver mapping): detection, foreground time, isolation, no extension network traffic | `scripts/mock-perusall-test.mjs` |
 
 Local mock page: the Perusall URL matcher and foreground logic are tested against mocked tab objects for
 `app.perusall.com` and look-alike hosts. The extension never sends anything to the live site.

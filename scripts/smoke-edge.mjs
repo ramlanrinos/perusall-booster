@@ -2,7 +2,7 @@
 // the service worker starts, then drives the real popup and history page. Never opens any website.
 // Usage: node scripts/smoke-edge.mjs [/path/to/browser]
 import { writeFileSync } from "node:fs";
-import { cdp, evaluate, findBrowser, launch, reporter, sleep, waitFor } from "./lib/browser.mjs";
+import { cdp, evaluate, findBrowser, launchWithExtension, reporter, sleep, waitFor } from "./lib/browser.mjs";
 
 const screenshotDir = process.env.SMOKE_SCREENSHOT_DIR; // optional: save popup screenshots for review
 
@@ -10,15 +10,12 @@ const browserPath = findBrowser(process.argv[2]);
 if (!browserPath) { console.error("SKIPPED: no Chromium-based browser found"); process.exit(2); }
 
 const { check, finish } = reporter();
-const b = await launch({ browser: browserPath });
+const { b, page } = await launchWithExtension({ browser: browserPath });
 try {
   const worker = await waitFor(async () => (await b.targets()).find((t) => t.type === "service_worker" && t.url.startsWith(`chrome-extension://${b.extensionId}/`)));
-  check("service worker registered", worker, worker ? worker.url : `no service worker for ${b.extensionId} (this browser build may ignore --load-extension)`);
+  check("service worker registered", worker, worker ? worker.url : `no service worker for ${b.extensionId}`);
   if (worker) {
-    const created = await cdp((await b.version()).webSocketDebuggerUrl, "Target.createTarget", { url: `chrome-extension://${b.extensionId}/popup/popup.html` });
-    const page = await waitFor(async () => (await b.targets()).find((t) => t.id === created.result?.targetId));
     check("popup page opened", page);
-    await sleep(1500);
     const run = (expr) => evaluate(page.webSocketDebuggerUrl, expr);
     const info = JSON.parse(await run(`JSON.stringify({title: document.title, timer: document.getElementById('timer')?.textContent, status: document.getElementById('status')?.textContent, disclaimer: !!document.getElementById('official-disclaimer'), buttons: document.querySelectorAll('button').length})`));
     check("popup rendered", info.title === "Perusall Booster" && info.timer, JSON.stringify(info));

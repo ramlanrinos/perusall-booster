@@ -8,7 +8,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer } from "node:https";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { cdp, evaluate, findBrowser, launch, reporter, sleep, waitFor } from "./lib/browser.mjs";
+import { cdp, evaluate, findBrowser, launchWithExtension, reporter, sleep, waitFor } from "./lib/browser.mjs";
 
 const browserPath = findBrowser(process.argv[2]);
 if (!browserPath) { console.error("SKIPPED: no Chromium-based browser found"); process.exit(2); }
@@ -30,8 +30,10 @@ await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const port = server.address().port;
 
 const { check, finish } = reporter();
-const b = await launch({
+// The extension page used to message the service worker is opened in a background tab.
+const { b, page: control } = await launchWithExtension({
   browser: browserPath,
+  background: true,
   extraArgs: [`--host-resolver-rules=MAP app.perusall.com 127.0.0.1:${port}, MAP unrelated.test 127.0.0.1:${port}, EXCLUDE localhost`, "--ignore-certificate-errors"],
 });
 
@@ -46,9 +48,6 @@ try {
   const activate = (t) => cdp(browserWs, "Target.activateTarget", { targetId: t.id });
 
   const unrelated = await open("https://unrelated.test/page");
-  // Extension page in a background tab, used only to message the service worker.
-  const control = await open(`chrome-extension://${b.extensionId}/popup/popup.html`, true);
-  await sleep(1200);
   const send = (msg) => evaluate(control.webSocketDebuggerUrl, `chrome.runtime.sendMessage(${JSON.stringify(msg)}).then(r => JSON.stringify(r))`).then(JSON.parse);
   await activate(unrelated);
   await sleep(800);

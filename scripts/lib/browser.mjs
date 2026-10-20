@@ -24,8 +24,9 @@ export const makeProfile = () => mkdtempSync(join(tmpdir(), "pb-browser-"));
 export const removeProfile = (dir) => rmSync(dir, { recursive: true, force: true });
 
 export async function launch({ browser, extraArgs = [], profileDir }) {
-  const dist = resolve("dist");
-  if (!existsSync(join(dist, "manifest.json"))) throw new Error("dist/ missing: run npm run build");
+  // EXTENSION_DIR lets the tests load another build, e.g. the extracted release ZIP.
+  const dist = resolve(process.env.EXTENSION_DIR ?? "dist");
+  if (!existsSync(join(dist, "manifest.json"))) throw new Error(`${dist} has no manifest.json: run npm run build`);
   const keepProfile = !!profileDir;
   const profile = profileDir ?? makeProfile();
   const port = 9300 + Math.floor(Math.random() * 500);
@@ -95,4 +96,39 @@ export function reporter() {
       return results.length > 0 && results.every((r) => r.ok);
     },
   };
+}
+
+/**
+ * Launches the browser and confirms the unpacked extension is actually registered by loading one
+ * of its pages. Edge occasionally starts without registering a --load-extension extension; in that
+ * case the browser is relaunched (up to `attempts` times) and a note is printed. Returns the
+ * browser context and the opened extension page.
+ */
+export async function launchWithExtension({ browser, extraArgs = [], profileDir, pagePath = "popup/popup.html", background = false, attempts = 3 }) {
+  for (let attempt = 1; ; attempt++) {
+    const b = await launch({ browser, extraArgs, profileDir });
+    try {
+      const page = await openExtensionPage(b, pagePath, { background });
+      return { b, page };
+    } catch (e) {
+      await b.close();
+      if (attempt >= attempts) throw e;
+      console.warn(`note: browser relaunched (extension not registered on attempt ${attempt})`);
+    }
+  }
+}
+
+/** Opens an extension page and waits until the extension API is available in it. */
+export async function openExtensionPage(b, path, { background = false } = {}) {
+  await waitFor(async () => (await b.version()).webSocketDebuggerUrl);
+  const created = await cdp((await b.version()).webSocketDebuggerUrl, "Target.createTarget", { url: `chrome-extension://${b.extensionId}/${path}`, background });
+  const page = await waitFor(async () => (await b.targets()).find((t) => t.id === created.result?.targetId));
+  if (!page) throw new Error(`could not open ${path}`);
+  for (let i = 0; i < 12; i++) {
+    await sleep(500);
+    const ok = await evaluate(page.webSocketDebuggerUrl, "typeof chrome !== 'undefined' && typeof chrome.runtime?.sendMessage === 'function' && !!document.body?.childElementCount").catch(() => false);
+    if (ok) { await sleep(500); return page; }
+    if (i % 3 === 2) await cdp(page.webSocketDebuggerUrl, "Page.reload", {});
+  }
+  throw new Error(`extension did not load for ${path}`);
 }

@@ -1,6 +1,6 @@
 {
   "name": "perusall-booster",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Personal reading-session timer, goals and history for Perusall readers. Separate from Perusall's official records.",
   "license": "MIT",
@@ -15,7 +15,8 @@
     "check": "npm run typecheck && npm run lint && npm run test && npm run build && npm run validate:manifest && npm run check:secrets",
     "smoke": "node scripts/smoke-edge.mjs",
     "test:browser": "node scripts/smoke-edge.mjs && node scripts/mock-perusall-test.mjs && node scripts/compat-test.mjs",
-    "check:history": "node scripts/check-secrets.mjs --history"
+    "check:history": "node scripts/check-secrets.mjs --history",
+    "package": "node scripts/package.mjs"
   },
   "engines": {
     "node": ">=20"
