@@ -1,6 +1,8 @@
 // Perusall Booster service worker: owns the personal timer and answers popup requests.
 // It never contacts Perusall or any other server, and injects nothing into web pages.
-import { isHistoryRequest, isRequest, type HistoryResponse, type Response } from "../shared/messages";
+import {
+  isHistoryRequest, isRequest, isSettingsRequest, type HistoryResponse, type Response, type SettingsResponse,
+} from "../shared/messages";
 import { PERUSALL_MATCH } from "../shared/perusall";
 import { readActivity, type ActivityApis } from "./activity";
 import { BackgroundService, HEARTBEAT_ALARM } from "./service";
@@ -11,6 +13,15 @@ const service = new BackgroundService({
   alarms: chrome.alarms,
   now: () => Date.now(),
   newId: () => crypto.randomUUID(),
+  notify: async (r) => {
+    await chrome.notifications.create(`pb-${r.kind}-${Date.now()}`, {
+      type: "basic",
+      iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
+      title: r.title,
+      message: r.message,
+      priority: 0,
+    });
+  },
 });
 
 const IDLE_DETECTION_SECONDS = 60;
@@ -46,7 +57,7 @@ async function refreshActivity(): Promise<void> {
 }
 const refresh = () => void refreshActivity();
 
-chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse: (r: Response | HistoryResponse) => void) => {
+chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse: (r: Response | HistoryResponse | SettingsResponse) => void) => {
   // Only accept messages from this extension's own pages.
   if (sender.id !== chrome.runtime.id) {
     sendResponse({ ok: false, error: "Unsupported sender" });
@@ -58,6 +69,10 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse: (r
   }
   if (isHistoryRequest(message)) {
     void service.handleHistory(message).then(sendResponse);
+    return true;
+  }
+  if (isSettingsRequest(message)) {
+    void service.handleSettings(message).then(sendResponse);
     return true;
   }
   sendResponse({ ok: false, error: "Unsupported message" });
@@ -79,6 +94,8 @@ chrome.idle.setDetectionInterval(IDLE_DETECTION_SECONDS);
 chrome.idle.onStateChanged.addListener(refresh);
 chrome.permissions.onAdded.addListener(refresh);
 chrome.permissions.onRemoved.addListener(refresh);
+// Clicking a reminder simply dismisses it.
+chrome.notifications.onClicked.addListener((id) => void chrome.notifications.clear(id));
 
 // After a browser restart, observe immediately so the closed period is classified as "not determined".
 chrome.runtime.onStartup.addListener(() => void service.startup().then(refreshActivity));

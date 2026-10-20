@@ -9,17 +9,14 @@
 </head>
 <body>
   <header class="top">
-    <img src="../icons/icon-32.png" width="28" height="28" alt="">
-    <div>
-      <h1>Perusall Booster</h1>
-      <p class="tagline muted small">Your personal reading timer</p>
-    </div>
-    <button id="open-options" hidden class="btn btn-link icon-btn" type="button" title="Goals &amp; reminders" aria-label="Open goals and reminder settings">⚙</button>
+    <img src="../icons/icon-32.png" width="26" height="26" alt="">
+    <h1>Perusall Booster</h1>
+    <button id="open-options" class="btn btn-link icon-btn" type="button" title="Goals &amp; reminders" aria-label="Open goals and reminder settings">⚙</button>
   </header>
 
   <p class="notice" id="official-disclaimer">
-    This is <strong>your personal timer</strong>. It is separate from Perusall's official
-    <em>Active engagement time</em> and does not change anything Perusall records.
+    <strong>Personal timer only</strong>: separate from Perusall's official <em>Active engagement time</em>.
+    It never changes what Perusall records.
   </p>
 
   <div id="error" class="banner" role="alert" hidden></div>
@@ -30,9 +27,10 @@
       <span id="status" class="status-pill" data-status="idle" role="status" aria-live="polite">Not started</span>
     </div>
     <p id="timer" class="timer" aria-label="Session time">0:00:00</p>
-    <div class="goal-line">
-      <div class="progress" role="progressbar" aria-labelledby="session-goal-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="session-progress"><span></span></div>
-      <p class="small muted" id="session-goal-label">Session goal: —</p>
+    <div class="progress" role="progressbar" aria-labelledby="session-goal-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="session-progress"><span></span></div>
+    <div class="row between small muted">
+      <span id="session-goal-label">Session goal: —</span>
+      <span id="break-label">Break: —</span>
     </div>
     <div class="controls">
       <button id="btn-start" class="btn btn-primary" type="button">Start</button>
@@ -41,11 +39,11 @@
       <button id="btn-stop" class="btn" type="button" disabled>Stop &amp; save</button>
       <button id="btn-reset" class="btn btn-danger" type="button" disabled>Reset</button>
     </div>
-    <label class="note-label small" for="note">Note for this session (optional, stays on this device)</label>
-    <input id="note" type="text" maxlength="500" placeholder="e.g. Chapter 4, sections 3–4" disabled>
+    <label class="visually-hidden" for="note">Note for this session (optional, stays on this device)</label>
+    <input id="note" type="text" maxlength="500" placeholder="Session note (optional, stays on this device)" disabled>
   </section>
 
-  <section class="card" aria-labelledby="today-heading">
+  <section class="card today-card" aria-labelledby="today-heading">
     <div class="row between">
       <h2 id="today-heading" class="section-title">Today</h2>
       <span id="today-total" class="today-total">0m</span>
@@ -56,28 +54,27 @@
 
   <section class="card" aria-labelledby="activity-heading">
     <div class="row between">
-      <h2 id="activity-heading" class="section-title">Activity indicators</h2>
+      <h2 id="activity-heading" class="section-title">This session</h2>
       <span id="perusall-state" class="chip" data-state="none">Perusall: not open</span>
     </div>
     <dl class="indicators">
       <div><dt>Timer elapsed</dt><dd id="ind-elapsed">0m</dd></div>
-      <div><dt>Perusall tab in foreground</dt><dd id="ind-foreground">0m</dd></div>
-      <div><dt>Browser window focused</dt><dd id="ind-focused">0m</dd></div>
+      <div><dt>Perusall in foreground</dt><dd id="ind-foreground">0m</dd></div>
+      <div><dt>Browser focused</dt><dd id="ind-focused">0m</dd></div>
       <div><dt>Paused</dt><dd id="ind-paused">0m</dd></div>
       <div><dt>Not determined</dt><dd id="ind-undetermined">0m</dd></div>
     </dl>
     <details class="small muted">
       <summary>How is this measured?</summary>
-      <p>The extension only looks at which tab is active, whether a browser window has focus and whether your
-        screen is locked. Time while your computer slept, was locked or the browser was closed is shown as
-        <em>not determined</em>. None of these numbers prove that you were reading, and none of them are
-        Perusall's numbers.</p>
+      <p>Only the active tab, window focus and screen lock are checked. Time while the computer slept, the screen was
+        locked or the browser was closed is <em>not determined</em>. None of this proves reading, and none of it is
+        Perusall's data.</p>
     </details>
   </section>
 
   <footer class="footer">
     <button id="open-history" class="btn btn-link" type="button">Session history</button>
-    <button id="open-options-2" hidden class="btn btn-link" type="button">Goals &amp; reminders</button>
+    <button id="open-options-2" class="btn btn-link" type="button">Goals &amp; reminders</button>
   </footer>
 
   <dialog id="confirm-reset" aria-labelledby="confirm-title">

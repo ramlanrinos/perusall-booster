@@ -1,5 +1,6 @@
 // Contract between the popup / extension pages and the background service worker.
 import type { SessionRecord } from "./model";
+import type { Settings } from "./settings";
 import type { AutoPauseReason, Buckets, TimerStatus } from "./timer";
 
 export type Request =
@@ -16,6 +17,13 @@ export type HistoryRequest =
   | { type: "deleteSession"; id: string }
   | { type: "clearSessions" };
 
+export type SettingsRequest =
+  | { type: "getSettings" }
+  | { type: "saveSettings"; settings: Settings }
+  | { type: "testNotification" };
+
+export type SettingsResponse = { ok: true; settings: Settings } | { ok: false; error: string };
+
 export type PerusallPresence = "foreground" | "open" | "none" | "unknown";
 
 export interface PopupView {
@@ -29,6 +37,9 @@ export interface PopupView {
   todayMs: number;
   targetSessionMs: number;
   dailyGoalMs: number;
+  breakReminderMs: number;
+  /** Running time left until the next break reminder; null when off or idle. */
+  nextBreakMs: number | null;
   perusall: PerusallPresence;
   /** Last storage failure, if any (shown as a banner). */
   storageError: string | null;
@@ -46,6 +57,7 @@ export type HistoryResponse = { ok: true; history: HistoryView } | { ok: false; 
 
 const REQUEST_TYPES = new Set(["getState", "start", "pause", "resume", "stop", "reset", "setNote"]);
 const HISTORY_TYPES = new Set(["listSessions", "deleteSession", "clearSessions"]);
+const SETTINGS_TYPES = new Set(["getSettings", "saveSettings", "testNotification"]);
 
 /** Validates an incoming message; anything else is rejected. */
 export function isRequest(value: unknown): value is Request {
@@ -62,5 +74,13 @@ export function isHistoryRequest(value: unknown): value is HistoryRequest {
   const v = value as Record<string, unknown>;
   if (typeof v.type !== "string" || !HISTORY_TYPES.has(v.type)) return false;
   if (v.type === "deleteSession" && (typeof v.id !== "string" || v.id.length === 0)) return false;
+  return true;
+}
+
+export function isSettingsRequest(value: unknown): value is SettingsRequest {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  if (typeof v.type !== "string" || !SETTINGS_TYPES.has(v.type)) return false;
+  if (v.type === "saveSettings" && (typeof v.settings !== "object" || v.settings === null)) return false;
   return true;
 }

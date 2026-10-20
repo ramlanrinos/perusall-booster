@@ -7,7 +7,7 @@ import { FakeAlarms, FakeClock, MemoryArea, MIN, SEC } from "./helpers";
 function setup(area = new MemoryArea(), clock = new FakeClock()) {
   const alarms = new FakeAlarms();
   let n = 0;
-  const service = new BackgroundService({ store: new Store(area), alarms, now: clock.now, newId: () => `id-${++n}` });
+  const service = new BackgroundService({ store: new Store(area), alarms, now: clock.now, newId: () => `id-${++n}`, notify: () => {} });
   return { area, clock, alarms, service };
 }
 

@@ -83,7 +83,7 @@ describe("activity context", () => {
 describe("activity indicators through the background service", () => {
   it("accrues foreground and focused time from context changes, separately from elapsed", async () => {
     const clock = new FakeClock();
-    const service = new BackgroundService({ store: new Store(new MemoryArea()), alarms: new FakeAlarms(), now: clock.now, newId: () => "s" });
+    const service = new BackgroundService({ store: new Store(new MemoryArea()), alarms: new FakeAlarms(), now: clock.now, newId: () => "s", notify: () => {} });
     await service.handle({ type: "start" });
     await service.updateContext({ windowFocused: true, perusallForeground: true, locked: false }, "foreground");
     clock.advance(20 * SEC);

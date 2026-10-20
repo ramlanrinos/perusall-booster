@@ -218,6 +218,8 @@ export function pause(state: TimerState, now: number): TimerState {
   closeSegment(s, now);
   s.status = "paused";
   s.autoPauseReason = null;
+  // A pause is a break: the break-reminder interval restarts from here.
+  s.reminders.lastBreakAtElapsedMs = s.buckets.elapsedMs;
   return s;
 }
 

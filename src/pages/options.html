@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Goals &amp; reminders · Perusall Booster</title>
+  <link rel="icon" href="../icons/icon-32.png">
+  <link rel="stylesheet" href="../styles/base.css">
+  <link rel="stylesheet" href="pages.css">
+</head>
+<body>
+  <header class="page-header">
+    <img src="../icons/icon-48.png" width="40" height="40" alt="">
+    <h1>Goals &amp; reminders</h1>
+  </header>
+
+  <p class="notice">Goals and reminders apply to <strong>your personal timer</strong> only. They don't change
+    Perusall's official records or grades. Set them to match your own plan or what your instructor asked for.</p>
+
+  <div id="error" class="banner" role="alert" hidden></div>
+
+  <form id="form" class="form-grid" novalidate>
+    <fieldset>
+      <legend>Personal goals</legend>
+      <div class="field">
+        <label for="targetSessionMinutes">Target session length (minutes)</label>
+        <input id="targetSessionMinutes" name="targetSessionMinutes" type="number" min="0" max="600" step="1" inputmode="numeric" aria-describedby="target-hint">
+        <span id="target-hint" class="hint">0 = no target. Sessions shorter than this are saved as "Ended early".</span>
+      </div>
+      <div class="field">
+        <label for="dailyGoalMinutes">Daily reading goal (minutes)</label>
+        <input id="dailyGoalMinutes" name="dailyGoalMinutes" type="number" min="0" max="1440" step="1" inputmode="numeric" aria-describedby="daily-hint">
+        <span id="daily-hint" class="hint">0 = no daily goal. Counts timer-running time from local midnight.</span>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Break reminders</legend>
+      <div class="field">
+        <label for="breakReminderMinutes">Remind me to take a break every (minutes of timer time)</label>
+        <input id="breakReminderMinutes" name="breakReminderMinutes" type="number" min="0" max="240" step="1" inputmode="numeric" aria-describedby="break-hint">
+        <span id="break-hint" class="hint">0 = off. Pausing the timer counts as a break and restarts the interval. Reminders can be up to 30 seconds late.</span>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Notifications</legend>
+      <label class="check"><input type="checkbox" id="notifyBreaks" name="notifyBreaks"> Break reminders</label>
+      <label class="check"><input type="checkbox" id="notifySessionGoal" name="notifySessionGoal"> When I reach my session goal</label>
+      <label class="check"><input type="checkbox" id="notifyDailyGoal" name="notifyDailyGoal"> When I reach my daily goal (once per day)</label>
+      <div><button id="test" class="btn" type="button">Send a test notification</button></div>
+      <span class="hint">If nothing appears, check that notifications are allowed for your browser in your operating system's settings.</span>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Save</button>
+      <button id="defaults" class="btn" type="button">Restore defaults</button>
+      <span id="saved" class="saved" role="status" aria-live="polite"></span>
+    </div>
+  </form>
+
+  <section class="card small muted" aria-labelledby="about-heading">
+    <h2 id="about-heading" class="small">How Perusall Booster measures time</h2>
+    <p>The timer counts while it is running. It also notes whether a Perusall tab was in the foreground and whether a
+      browser window had focus. Time while your computer slept, the screen was locked or the browser was closed is
+      recorded as <em>not determined</em>, and the timer pauses itself. Everything is stored only in this browser.
+      Nothing is sent to Perusall or anywhere else. These numbers are not Perusall's "Active engagement time".</p>
+  </section>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

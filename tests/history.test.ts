@@ -8,7 +8,7 @@ import { FakeAlarms, FakeClock, MemoryArea, MIN, SEC } from "./helpers";
 
 function setup(area = new MemoryArea(), clock = new FakeClock()) {
   let n = 0;
-  const service = new BackgroundService({ store: new Store(area), alarms: new FakeAlarms(), now: clock.now, newId: () => `id-${++n}` });
+  const service = new BackgroundService({ store: new Store(area), alarms: new FakeAlarms(), now: clock.now, newId: () => `id-${++n}`, notify: () => {} });
   return { area, clock, service };
 }
 const view = (r: Response): PopupView => { if (!r.ok) throw new Error(r.error); return r.view; };

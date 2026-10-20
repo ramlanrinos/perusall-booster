@@ -15,6 +15,7 @@ const ui = {
   timer: $("timer"),
   sessionProgress: $("session-progress"),
   sessionGoalLabel: $("session-goal-label"),
+  breakLabel: $("break-label"),
   start: $<HTMLButtonElement>("btn-start"),
   pause: $<HTMLButtonElement>("btn-pause"),
   resume: $<HTMLButtonElement>("btn-resume"),
@@ -89,8 +90,12 @@ function render(): void {
 
   setProgress(ui.sessionProgress, percent(elapsed, v.targetSessionMs));
   ui.sessionGoalLabel.textContent = v.targetSessionMs > 0
-    ? `Session goal: ${formatShort(elapsed)} of ${formatShort(v.targetSessionMs)}`
-    : "Session goal: none set";
+    ? `Goal: ${formatShort(elapsed)} / ${formatShort(v.targetSessionMs)}`
+    : "Goal: none set";
+
+  if (v.breakReminderMs <= 0) ui.breakLabel.textContent = "Break reminders off";
+  else if (v.nextBreakMs === null) ui.breakLabel.textContent = `Break every ${formatShort(v.breakReminderMs)}`;
+  else ui.breakLabel.textContent = `Break in ${formatShort(Math.max(0, v.nextBreakMs - drift))}`;
 
   ui.todayTotal.textContent = formatShort(today);
   setProgress(ui.dailyProgress, percent(today, v.dailyGoalMs));
@@ -134,6 +139,7 @@ async function refresh(): Promise<void> {
   if (busy) return;
   const next = await send({ type: "getState" });
   if (next) {
+    if (view && ui.note.value !== next.note && next.status !== "idle") next.note = ui.note.value; // unsent edit
     view = next;
     receivedAt = Date.now();
     render();
@@ -152,8 +158,11 @@ ui.confirmReset.addEventListener("close", () => {
   if (ui.confirmReset.returnValue === "confirm") void act({ type: "reset" });
 });
 
+// The note typed here is authoritative: it is copied into the local view immediately so the
+// periodic re-render can never replace it with an older stored value.
 let noteTimer: ReturnType<typeof setTimeout> | undefined;
 ui.note.addEventListener("input", () => {
+  if (view) view.note = ui.note.value;
   clearTimeout(noteTimer);
   noteTimer = setTimeout(() => void send({ type: "setNote", note: ui.note.value }), 400);
 });

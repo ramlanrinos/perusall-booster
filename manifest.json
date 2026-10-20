@@ -19,6 +19,10 @@
       "32": "icons/icon-32.png"
     }
   },
+  "options_ui": {
+    "page": "pages/options.html",
+    "open_in_tab": true
+  },
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -26,7 +30,8 @@
   "permissions": [
     "storage",
     "alarms",
-    "idle"
+    "idle",
+    "notifications"
   ],
   "host_permissions": [
     "https://app.perusall.com/*"

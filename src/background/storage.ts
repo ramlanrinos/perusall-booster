@@ -15,6 +15,7 @@ export const KEYS = {
   timerBackup: "timer_corrupt_backup",
   settings: "settings",
   sessions: "sessions",
+  dailyGoalNotifiedOn: "dailyGoalNotifiedOn",
   schemaVersion: "schemaVersion",
 } as const;
 
@@ -112,5 +113,22 @@ export class Store {
 
   async clearSessions(): Promise<void> {
     await this.writeSessions([], "clear the history");
+  }
+
+  async loadDailyGoalNotifiedOn(): Promise<string | null> {
+    try {
+      const v = (await this.area.get(KEYS.dailyGoalNotifiedOn))[KEYS.dailyGoalNotifiedOn];
+      return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+    } catch (e) {
+      throw new StorageError(`Could not read reminder state: ${describe(e)}`, e);
+    }
+  }
+
+  async saveDailyGoalNotifiedOn(day: string | null): Promise<void> {
+    try {
+      await this.area.set({ [KEYS.dailyGoalNotifiedOn]: day });
+    } catch (e) {
+      throw new StorageError(`Could not save reminder state: ${describe(e)}`, e);
+    }
   }
 }
